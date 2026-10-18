@@ -1,0 +1,87 @@
+/* Inner-page styles (services, about, contact). Tailwind @utility and @custom-variant blocks only. */
+
+/* Service card hovers, fine pointers only so touch screens never get a stuck hover.
+   `fine-hover:` styles the element itself; `card-hover:` styles a descendant of a
+   `group/svc` card, e.g. `card-hover:shape-arch` to morph the glyph. */
+@custom-variant fine-hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:is(:hover, :focus-within) {
+      @slot;
+    }
+  }
+}
+
+@custom-variant card-hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:is(:where(.group\/svc):is(:hover, :focus-within) *) {
+      @slot;
+    }
+  }
+}
+
+/* `card-on:` is "the card is active" for a descendant of a `group/svc` card: hovered or
+   focused on a fine pointer, or on touch while the card holds an in-view FlowInView
+   (`data-inview`). One utility list drives both, so the morph and the accent bar never
+   disagree. */
+@custom-variant card-on {
+  @media (hover: hover) and (pointer: fine) {
+    &:is(:where(.group\/svc):is(:hover, :focus-within) *) {
+      @slot;
+    }
+  }
+  @media (hover: none), (pointer: coarse) {
+    &:is(:where(.group\/svc):has([data-inview]) *) {
+      @slot;
+    }
+  }
+}
+
+/* ================================================================== about */
+
+/*
+ * `about-on:` styles a tile on the About page (a `group/about`) and everything inside it while
+ * the tile is active: a mouse hovers it (fine pointers only, so touch never gets a sticky
+ * hover) or, on touch, its FlowInView sentinel carries data-inview (the tile is on screen).
+ * The tile itself is matched as well as its descendants. Facts, principles and team all use
+ * it, so a morph is one utility list that works on every device.
+ */
+@custom-variant about-on {
+  @media (hover: hover) and (pointer: fine) {
+    &:is(:where(.group\/about):hover, :where(.group\/about):hover *) {
+      @slot;
+    }
+  }
+
+  @media (hover: none), (pointer: coarse) {
+    &:is(:where(.group\/about):has([data-inview]), :where(.group\/about):has([data-inview]) *) {
+      @slot;
+    }
+  }
+}
+
+/* Moves a Shape inside a glyph box by `--x` / `--y` (x mirrors in RTL). The Shape already
+   transitions `translate`, so a variant only has to change the two properties:
+   `glyph-pos [--x:2rem] [--y:0px] about-on:[--x:0px]`. */
+@utility glyph-pos {
+  translate: calc(var(--dir) * var(--x, 0px)) var(--y, 0px);
+}
+
+/* Team node tile: a square box that holds a Shape and the initials. Its type scales with its
+   own width (container query units), so the initials stay in proportion from a 2-up phone
+   grid to a 4-up row. */
+@utility avatar {
+  position: relative;
+  container-type: inline-size;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+}
+
+@utility avatar-initials {
+  font-family: var(--font-satoshi), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 900;
+  font-size: 32cqi;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  direction: ltr;
+}

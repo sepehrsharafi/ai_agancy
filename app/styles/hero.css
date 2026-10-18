@@ -1,0 +1,832 @@
+/*
+ * Hero "before / after workflow": tabs, the console (a haze frame holding the white card
+ * with the workflow - nodes, ports, wire, packets - and the white metrics ledger). Tailwind
+ * @utility blocks and keyframes only. Animated: translate/scale, opacity, colour, and the few
+ * grid-template-rows / flex-grow changes that collapse and grow the workflow steps.
+ */
+
+/* ------------------------------------------------------------------ sizing */
+
+/* The demo column: up to 38rem, at the end edge of its column on desktop. */
+@utility hero-demo {
+  inline-size: min(100%, 38rem);
+
+  @media (min-width: 64rem) {
+    margin-inline-start: auto;
+  }
+}
+
+/* Left column on desktop: a flex column so the copy group can centre against the stage. */
+@utility hero-copy {
+  @media (min-width: 64rem) {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* ------------------------------------------------------------------- tabs */
+
+/* The ink pill that slides to the active tab. Its position and width come from two
+   custom properties written by the component after it measures the tab. Left is
+   physical on purpose: offsetLeft is physical too, in both directions. */
+@utility hero-indicator {
+  position: absolute;
+  left: 0;
+  top: 0.375rem;
+  block-size: 2.5rem;
+  inline-size: var(--w, 0px);
+  translate: var(--x, 0px) 0;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-ink);
+  pointer-events: none;
+
+  /* No transition until the first placement has painted, so it never slides in from 0. */
+  [data-settled] > & {
+    transition:
+      translate 600ms var(--ease-spring),
+      inline-size 600ms var(--ease-spring);
+  }
+}
+
+@utility hero-tab {
+  position: relative;
+  z-index: 10;
+  flex: none;
+  block-size: 2.5rem;
+  padding-inline: 0.875rem;
+  border-radius: var(--radius-pill);
+  color: var(--color-ink-soft);
+  white-space: nowrap;
+  transition: color 200ms var(--ease-out) 80ms;
+
+  /* Hover and keyboard focus share one look; the selected tab never changes colour. */
+  &:not([aria-selected="true"]):focus-visible {
+    color: var(--color-ink);
+  }
+
+  @media (hover: hover) {
+    &:not([aria-selected="true"]):hover {
+      color: var(--color-ink);
+    }
+  }
+
+  &[aria-selected="true"] {
+    color: var(--color-white);
+    /* Readable before JS measures anything; handed over to the sliding pill after. */
+    background-color: var(--color-ink);
+  }
+
+  [data-ready] > &[aria-selected="true"] {
+    background-color: transparent;
+  }
+}
+
+/* The autoplay progress line, drawn inside the pill. One short animation per step
+   (--from -> --to over --d) so pausing the page pauses the line and the timer together. */
+@utility hero-progress {
+  position: absolute;
+  inset-inline: 1rem;
+  inset-block-end: 0.3125rem;
+  block-size: 2px;
+  background-color: var(--color-ultra);
+  transform-origin: calc(50% - 50% * var(--dir)) 50%;
+  scale: var(--from, 0) 1;
+  animation: hero-fill var(--d, 1100ms) linear forwards;
+
+  [data-paused] & {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes hero-fill {
+  from {
+    scale: var(--from, 0) 1;
+  }
+  to {
+    scale: var(--to, 1) 1;
+  }
+}
+
+/* ------------------------------------------------------------------ stage */
+
+/*
+ * The console: a haze frame (node-editor dot grid, ink/8, 16px pitch) with two white
+ * surfaces inside, the card and the ledger. Every radius derives from the frame's, so the
+ * corners stay concentric at any padding:
+ *   frame r        --console-r       (the card radius token)
+ *   inner surface  --console-inner-r = frame r - frame padding
+ *   box in a card  --console-box-r   = inner r - card padding, never under 0.75rem
+ * Pills stay fully round.
+ */
+@utility hero-stage {
+  --console-r: var(--radius-card);
+  --console-pad: 0.5rem;
+  --card-pad: 1.25rem;
+  --console-inner-r: calc(var(--console-r) - var(--console-pad));
+  --console-box-r: max(0.75rem, calc(var(--console-inner-r) - var(--card-pad)));
+  display: flex;
+  flex-direction: column;
+  gap: var(--console-pad);
+  padding: var(--console-pad);
+  border-radius: var(--console-r);
+  background-color: var(--color-haze);
+  background-image: radial-gradient(circle, color-mix(in oklab, var(--color-ink) 8%, transparent) 1px, transparent 1.5px);
+  background-size: 16px 16px;
+
+  @media (min-width: 64rem) {
+    --console-pad: 0.75rem;
+  }
+}
+
+@utility hero-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: var(--card-pad);
+  border-radius: var(--console-inner-r);
+  background-color: var(--color-white);
+
+  @media (min-width: 64rem) {
+    gap: 1.25rem;
+  }
+}
+
+@utility hero-fade-in {
+  animation: hero-fade 350ms var(--ease-out) backwards;
+}
+
+@keyframes hero-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* --------------------------------------------------------- the switch */
+
+/* Today | With Nova. A big pill with a thumb that slides (spring) under the active label. */
+@utility hero-switch {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 0.25rem;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-paper);
+  box-shadow: inset 0 0 0 1px var(--color-line);
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset-block: 0.25rem;
+    inset-inline-start: 0.25rem;
+    inline-size: calc((100% - 0.5rem) / 2);
+    border-radius: var(--radius-pill);
+    background-color: var(--color-ultra);
+    transition: translate 500ms var(--ease-spring);
+  }
+
+  &[data-mode="1"]::before {
+    translate: calc(var(--dir) * 100%) 0;
+  }
+
+  > button {
+    position: relative;
+    z-index: 1;
+    block-size: 2.5rem;
+    padding-inline: 1.125rem;
+    border-radius: var(--radius-pill);
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    color: var(--color-ink-soft);
+    transition: color 250ms var(--ease-out);
+  }
+
+  > button[aria-pressed="true"] {
+    color: var(--color-white);
+  }
+
+  @media (hover: hover) {
+    > button[aria-pressed="false"]:hover {
+      color: var(--color-ink);
+    }
+  }
+
+  > button[aria-pressed="false"]:focus-visible {
+    color: var(--color-ink);
+  }
+}
+
+/* -------------------------------------------------------------- workflow */
+
+/*
+ * The flow: nodes in a column with the wire on the start side (so RTL mirrors it). Each
+ * node is a "leg": a port dot on the wire plus a short stub to the node. data-mode is "0"
+ * today and "1" with Nova; the wire and ports turn ultra and packets run only in "1".
+ */
+@utility hero-flow {
+  --wire: color-mix(in oklab, var(--color-ink) 30%, transparent);
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding-inline-start: 1.75rem;
+
+  &[data-mode="1"] {
+    --wire: var(--color-ultra);
+  }
+}
+
+@utility hero-wire {
+  position: absolute;
+  inset-block: 0.75rem;
+  inset-inline-start: 0.6875rem;
+  inline-size: 2px;
+  border-radius: 1px;
+  background-color: var(--wire);
+  transition: background-color 500ms var(--ease-out);
+
+  /* The conduit, as on every flow wire: a 6px ultra line at 12% behind it while it runs. */
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 -2px;
+    border-radius: 3px;
+    background-color: var(--color-ultra);
+    opacity: 0;
+    transition: opacity 400ms var(--ease-out);
+  }
+
+  .hero-flow[data-mode="1"] &::before {
+    opacity: 0.12;
+  }
+}
+
+@utility hero-leg {
+  position: relative;
+
+  /* port */
+  &::before {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    inset-block-start: 50%;
+    inset-inline-start: -1.25rem;
+    inline-size: 0.5rem;
+    aspect-ratio: 1;
+    translate: 0 -50%;
+    border-radius: 50%;
+    border: 1.5px solid var(--color-ink);
+    background-color: var(--color-paper);
+    transition:
+      background-color 400ms var(--ease-out),
+      border-color 400ms var(--ease-out);
+  }
+
+  /* stub from the wire to the node */
+  &::after {
+    content: "";
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-start: -1rem;
+    inline-size: 1rem;
+    block-size: 2px;
+    translate: 0 -50%;
+    background-color: var(--wire);
+    transition: background-color 500ms var(--ease-out);
+  }
+
+  .hero-flow[data-mode="1"] &::before {
+    border-color: var(--color-ultra);
+    background-color: var(--color-ultra);
+  }
+}
+
+@utility hero-node {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.75rem;
+  row-gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--console-box-r);
+  background-color: var(--color-white);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 10%, transparent);
+  line-height: 1.35;
+
+  &:lang(fa) {
+    line-height: 1.6;
+  }
+}
+
+/* A today-step on phones is one row: text at the start, the time pill at the end. */
+@utility hero-node-row {
+  @media (max-width: 39.99rem) {
+    flex-wrap: nowrap;
+  }
+}
+
+/* Step text: body size, a touch smaller on phones so most steps fit one or two lines. */
+@utility hero-step-text {
+  font-size: calc(var(--text-body) * 0.9375);
+  line-height: 1.35;
+
+  &:lang(fa) {
+    line-height: 1.6;
+  }
+
+  @media (min-width: 40rem) {
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    letter-spacing: var(--text-body--letter-spacing);
+    font-weight: var(--text-body--font-weight);
+
+    &:lang(fa) {
+      line-height: var(--text-body--line-height);
+    }
+  }
+}
+
+/* The AI step: ultra, white text. It stretches to fill whatever height the flow has. */
+@utility hero-node-agent {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: 1rem;
+  border-radius: var(--console-box-r);
+  background-color: var(--color-ultra);
+  color: var(--color-white);
+  box-shadow: none;
+}
+
+/* Collapsible today-step: the row animates to 0 height and fades, staggered 40ms (--i). */
+@utility hero-row {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows 600ms var(--ease-spring) calc(var(--i, 0) * 40ms),
+    opacity 300ms var(--ease-out) calc(var(--i, 0) * 40ms),
+    translate 500ms var(--ease-out) calc(var(--i, 0) * 40ms);
+
+  > * {
+    min-block-size: 0;
+    overflow: visible clip;
+    padding-block-end: 0.3125rem;
+  }
+
+  &[data-collapsed] {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    translate: 0 -0.5rem;
+  }
+}
+
+/* The with-Nova section: grows in as the today steps collapse, and takes the spare height. */
+@utility hero-with {
+  display: grid;
+  grid-template-rows: 0fr;
+  flex: 0 0 auto;
+  opacity: 0;
+  translate: 0 0.5rem;
+  transition:
+    grid-template-rows 600ms var(--ease-spring),
+    flex-grow 600ms var(--ease-spring),
+    opacity 350ms var(--ease-out),
+    translate 500ms var(--ease-out);
+
+  > * {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-block-size: 0;
+    overflow: visible clip;
+  }
+
+  &[data-open] {
+    grid-template-rows: 1fr;
+    flex: 1 1 auto;
+    opacity: 1;
+    translate: 0 0;
+    transition-delay: 160ms, 160ms, 160ms, 160ms;
+  }
+}
+
+/* Packets: the site's comets (see flow-comet in flow.css), running down the wire while it is
+   ultra. Each is a full-height column holding a 3 x 22px pill whose gradient tail trails a 5px
+   round head, head down. The column is moved by its own height minus the comet's 22px, so the
+   head lands on the wire's end at any height. Same easing and fades as flow-travel. */
+@utility hero-packets {
+  position: absolute;
+  inset-block: 0.75rem;
+  inset-inline-start: 0.5625rem;
+  inline-size: 6px;
+  overflow: clip;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 400ms var(--ease-out);
+
+  .hero-flow[data-mode="1"] > & {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    display: none;
+  }
+}
+
+@utility hero-packet {
+  position: absolute;
+  inset-block: 0;
+  inline-size: 100%;
+  opacity: 0;
+  animation: hero-packet 2.4s cubic-bezier(0.5, 0, 0.3, 1) infinite;
+  animation-delay: calc(var(--k, 0) * -0.8s);
+
+  /* the tail */
+  &::before {
+    content: "";
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 1.5px;
+    inline-size: 3px;
+    block-size: 22px;
+    border-radius: 999px;
+    background-image: linear-gradient(to bottom, transparent, var(--color-ultra) 85%);
+  }
+
+  /* the head, on the leading end */
+  &::after {
+    content: "";
+    position: absolute;
+    inset-block-start: 17px;
+    inset-inline-start: 0.5px;
+    inline-size: 5px;
+    block-size: 5px;
+    border-radius: 50%;
+    background-color: var(--color-ultra);
+  }
+
+  [data-paused] &,
+  .hero-flow[data-mode="0"] & {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes hero-packet {
+  0% {
+    translate: 0 0;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    translate: 0 calc(100% - 22px);
+    opacity: 0;
+  }
+}
+
+/* The footer of the flow: what this costs you in time, every day. Label at the start,
+   figure at the end; in Farsi on phones it stacks, like every ledger row. */
+@utility hero-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-block-start: 0.875rem;
+  padding-block-start: 0.875rem;
+  border-block-start: 1px solid var(--color-line);
+
+  > :first-child {
+    flex: 1 1 0;
+    min-inline-size: 0;
+  }
+
+  @media (max-width: 39.99rem) {
+    &:lang(fa) {
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 0.25rem;
+
+      > :first-child {
+        flex: none;
+      }
+    }
+  }
+}
+
+/* A small pill: who does the step, how long it takes. */
+@utility hero-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-label);
+  line-height: 1.25;
+  font-weight: 500;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+
+  &:lang(fa) {
+    line-height: 1.5;
+  }
+}
+
+/* --------------------------------------------------------------- metrics */
+
+/* The ledger: one white surface under the card, rows divided by hairlines. */
+@utility hero-ledger {
+  display: grid;
+  border-radius: var(--console-inner-r);
+  background-color: var(--color-white);
+}
+
+/* Under 640px a row is one line (label at the start, figure at the end, centred) and the
+   rows stack. In Farsi the labels are too long for that, so there EVERY row (and the card's
+   total) stacks instead: label above, figure below. From 640px the rows are three columns,
+   label above figure. */
+@utility hero-metric {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.875rem 1.25rem;
+
+  &:not(:first-child) {
+    border-block-start: 1px solid var(--color-line);
+  }
+
+  > :first-child {
+    flex: 1 1 0;
+    min-inline-size: 0;
+  }
+
+  @media (max-width: 39.99rem) {
+    &:lang(fa) {
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
+      gap: 0.25rem;
+
+      > :first-child {
+        flex: none;
+      }
+    }
+  }
+
+  @media (min-width: 40rem) {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.25rem;
+    padding-inline: 1rem;
+
+    &:not(:first-child) {
+      border-block-start: 0;
+      border-inline-start: 1px solid var(--color-line);
+    }
+
+    > :first-child {
+      flex: none;
+    }
+  }
+}
+
+/* The label of a ledger row or of the total: small, soft, medium, no tracking. */
+@utility hero-label {
+  font-size: var(--text-label);
+  line-height: 1.35;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--color-ink-soft);
+
+  &:lang(fa) {
+    line-height: 1.6;
+  }
+}
+
+/* The figure box of a row. The body face in both languages (never the wide Farsi display
+   face); Amount sets the number big and the unit small inside it. */
+@utility hero-figure {
+  font-family: var(--font-sans);
+  font-size: 1.375rem;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+
+  &:lang(fa) {
+    line-height: 1.5;
+  }
+}
+
+/* "1 h 15 min": numbers dominate, units recede. */
+@utility hero-amount {
+  display: inline-flex;
+  align-items: baseline;
+  column-gap: 0.25em;
+  white-space: nowrap;
+}
+
+@utility hero-amount-num {
+  font-weight: 700;
+}
+
+@utility hero-amount-unit {
+  font-size: 0.6em;
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+/* The old value, struck through beside the new one. */
+@utility hero-was {
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: 0;
+  white-space: nowrap;
+  color: var(--color-ink-soft);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+/* The figure cell of a row: today's and with-Nova's value share it. */
+@utility hero-metric-values {
+  display: grid;
+  flex-shrink: 0;
+
+  @media (max-width: 39.99rem) {
+    justify-items: end;
+
+    &:lang(fa) {
+      justify-items: start;
+    }
+  }
+
+  @media (min-width: 40rem) {
+    justify-items: start;
+  }
+}
+
+/* The two values of a row share one grid cell and cross-fade, sliding 6px. data-off says
+   which way the hidden one has moved. */
+@utility hero-value {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.5rem;
+  transition:
+    opacity 350ms var(--ease-out),
+    translate 450ms var(--ease-out);
+
+  @media (max-width: 39.99rem) {
+    justify-content: flex-end;
+
+    &:lang(fa) {
+      justify-content: flex-start;
+    }
+  }
+
+  &[data-off="up"] {
+    opacity: 0;
+    translate: 0 -6px;
+  }
+
+  &[data-off="down"] {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+
+/* ---------------------------------------------------------------- backdrop */
+
+/*
+ * "Signal ribbon" (components/home/hero-backdrop.tsx): ~28 thin curves twisting through the hero's
+ * background. The container is a page-low, non-interactive box that is mirrored in RTL (scaleX by
+ * --dir, mask and glow included), so the ribbon always rises toward the end edge. Its mask keeps
+ * the headline block clear: on desktop it shows right of the copy column and in the band under
+ * the buttons, and fades at the top (header); on phones it shows twice: its rising end in the
+ * empty top-end corner beside the headline (hero-ribbon-top), and its sweep behind and below the
+ * console. On phones each SVG carries its own mask; on desktop the container does.
+ * contain: strict + a fixed box means nothing in it ever lays out or repaints.
+ */
+@utility hero-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -10;
+  pointer-events: none;
+  contain: strict;
+  will-change: transform;
+  transform: scaleX(var(--dir));
+  opacity: 0.85;
+
+  /* Visible where the copy is not: right of the copy column (behind and above the console) or in
+     the band below the buttons (the facts row). Top fade keeps it off the header, and a start-side fade (clear to 30%, full by 46%) keeps it off
+     the facts row and the note under the CTA. Layers are top fade AND start fade AND
+     (right part OR bottom band). */
+  @media (min-width: 64rem) {
+    opacity: 1;
+    mask-image:
+      linear-gradient(to bottom, transparent 0%, #000 10%),
+      linear-gradient(to right, transparent 30%, #000 46%),
+      linear-gradient(to right, transparent 44%, #000 56%),
+      linear-gradient(to bottom, transparent 72%, #000 84%);
+    mask-composite: intersect, intersect, add, add;
+    -webkit-mask-composite: source-in, source-in, source-over, source-over;
+  }
+}
+
+/* The haze pool the console sits in: one radial gradient, no blur. */
+@utility hero-backdrop-glow {
+  position: absolute;
+  left: 5%;
+  bottom: 0;
+  inline-size: 90%;
+  block-size: 48%;
+  background: radial-gradient(closest-side, var(--color-haze), transparent);
+  opacity: 0.7;
+
+  @media (min-width: 64rem) {
+    left: auto;
+    right: -6%;
+    bottom: auto;
+    top: 14%;
+    inline-size: 62%;
+    block-size: 78%;
+  }
+}
+
+/* Phones: a wide, short box anchored to the bottom, shifted so the middle of the sweep shows.
+   Desktop: slightly larger than the hero so the drift never uncovers an edge. Physical offsets
+   on purpose; the container is what mirrors. */
+@utility hero-ribbon {
+  position: absolute;
+  left: -62%;
+  bottom: -4%;
+  inline-size: 240%;
+  block-size: 78%;
+  overflow: visible;
+  will-change: transform;
+  animation: hero-ribbon-drift 18s ease-in-out infinite alternate;
+  /* Its own box starts at 26% of the hero: clear until about half-way down the hero. */
+  mask-image: linear-gradient(to bottom, transparent 26%, #000 51%);
+
+  @media (min-width: 64rem) {
+    left: -4%;
+    top: -4%;
+    bottom: auto;
+    inline-size: 108%;
+    block-size: 108%;
+    mask-image: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    will-change: auto;
+  }
+}
+
+/* Phones only: the ribbon's steep rising end (viewBox x ≈ 1000-1600) framed across the screen
+   width, so it climbs from beside the lede up into the top-end corner behind the header. The
+   box is 16:9 at 320% of the hero width, shifted so viewBox x ≈ 1000 lands on the start edge.
+   Masks are in this box: the start side stays clear of the headline, and it is gone before the
+   lede. Same drift as the main ribbon. */
+@utility hero-ribbon-top {
+  position: absolute;
+  left: -200%;
+  top: -7rem;
+  inline-size: 320%;
+  aspect-ratio: 16 / 9;
+  overflow: visible;
+  will-change: transform;
+  animation: hero-ribbon-drift 18s ease-in-out infinite alternate;
+  mask-image:
+    linear-gradient(to right, transparent 70%, #000 84%),
+    linear-gradient(to bottom, #000 42%, transparent 52%);
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
+
+  @media (min-width: 64rem) {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    will-change: auto;
+  }
+}
+
+@keyframes hero-ribbon-drift {
+  from {
+    translate: -2% 1%;
+    rotate: -1.5deg;
+  }
+
+  to {
+    translate: 2% -1%;
+    rotate: 1.5deg;
+  }
+}

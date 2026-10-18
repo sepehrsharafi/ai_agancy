@@ -1,0 +1,96 @@
+/* Section styles — owned by one engineer. Tailwind @utility blocks and keyframes only. */
+
+/* ------------------------------------------------------------ case cards */
+
+/*
+ * The cover is a tinted field (with the `canvas` dot grid) holding a mini workflow, centred.
+ * 3:2.
+ */
+@utility case-cover {
+  position: relative;
+  aspect-ratio: 3 / 2;
+  overflow: clip;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+}
+
+/* ---------------------------------------------------------- rails (snap) */
+
+/*
+ * Side padding of a full-bleed scroller that lines its first card up with the Container's
+ * content edge at any viewport width (the Container is 90rem wide with the gutter inside).
+ */
+@utility rail-inset {
+  --rail-pad: max(var(--spacing-gutter), calc((100% - var(--container-site)) / 2 + var(--spacing-gutter)));
+  padding-inline: var(--rail-pad);
+  scroll-padding-inline: var(--rail-pad);
+}
+
+/* The `canvas` dot grid at half strength (the testimonials backdrop, at every size). */
+@utility canvas-quiet {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-ink) 4%, transparent) 1.25px,
+    transparent 1.75px
+  );
+  background-size: 16px 16px;
+  background-position: center;
+}
+
+/* Arrow glyph that points backwards (previous button). The forward one is
+   `scale-x-(--dir)`, both mirror in RTL. */
+@utility arrow-back {
+  scale: calc(var(--dir) * -1) 1;
+}
+
+/* -------------------------------------------------------------------- faq */
+
+/*
+ * Smooth disclosure. `interpolate-size` lets block-size animate to `auto`; the
+ * `::details-content` box is what actually collapses, and `content-visibility` is
+ * transitioned discretely so the closing content stays painted until it has shrunk.
+ * Browsers without ::details-content just open and close instantly.
+ */
+@utility faq-item {
+  interpolate-size: allow-keywords;
+
+  &::details-content {
+    block-size: 0;
+    overflow: clip;
+    transition:
+      block-size 500ms var(--ease-out),
+      content-visibility 500ms allow-discrete;
+  }
+
+  &[open]::details-content {
+    block-size: auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &::details-content {
+      transition-duration: 1ms;
+    }
+  }
+}
+
+/* The answer fades in a beat behind the height. Open is the default state, so a
+   browser that ignores all of the above still shows it. */
+@utility faq-answer {
+  opacity: 0;
+  transition: opacity 350ms var(--ease-out);
+
+  [open] > & {
+    opacity: 1;
+    transition-delay: 100ms;
+  }
+}
+
+@utility faq-summary {
+  list-style: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+}
+

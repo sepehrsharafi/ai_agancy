@@ -1,0 +1,442 @@
+/* Section styles — owned by one engineer. Tailwind @utility blocks and keyframes only. */
+
+/* ============================================================ audience picker */
+
+/*
+ * Phones: a horizontal snap row of chips that bleeds to the screen edges but starts and
+ * ends aligned with the gutter. Desktop (1024px+): a vertical list of large text rows with
+ * a circle that slides to the active one. Vertical padding gives the focus ring room
+ * inside the scroll container's clip. Each tab carries a tone (data-tone) that the chip
+ * fill, the ghost circle and the marker all share.
+ */
+@utility audience-tabs {
+  position: relative;
+  display: flex;
+  gap: 0.5rem;
+  margin-inline: calc(var(--spacing-gutter) * -1);
+  margin-block: -0.375rem;
+  padding-inline: var(--spacing-gutter);
+  padding-block: 0.375rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--spacing-gutter);
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (min-width: 64rem) {
+    flex-direction: column;
+    gap: 0;
+    margin-inline: 0;
+    margin-block: 0;
+    padding: 0;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+}
+
+/* Row height is fixed (4rem) so the marker can slide with a plain translate: index x 4rem. */
+@utility audience-tab {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  block-size: 2.75rem;
+  padding-inline: 1.25rem;
+  border-radius: var(--radius-pill);
+  background-color: var(--color-white);
+  color: var(--color-ink);
+  font-weight: 600;
+  white-space: nowrap;
+  scroll-snap-align: start;
+  transition:
+    background-color 300ms var(--ease-out),
+    color 300ms var(--ease-out);
+
+  &[data-tone="ultra"] {
+    --tone-bg: var(--color-ultra);
+    --tone-fg: var(--color-white);
+  }
+
+  &[data-tone="mint"] {
+    --tone-bg: var(--color-mint);
+    --tone-fg: var(--color-ink);
+  }
+
+  &[data-tone="sun"] {
+    --tone-bg: var(--color-sun);
+    --tone-fg: var(--color-ink);
+  }
+
+  &[aria-selected="true"] {
+    background-color: var(--tone-bg);
+    color: var(--tone-fg);
+  }
+
+  @media (min-width: 64rem) {
+    block-size: 4rem;
+    padding-inline: 2.25rem 0;
+    border-radius: 0;
+    background-color: transparent;
+    color: var(--color-ink-soft);
+    font-family: var(--font-display);
+    font-size: var(--text-h3);
+    line-height: var(--text-h3--line-height);
+    letter-spacing: var(--text-h3--letter-spacing);
+    font-weight: var(--text-h3--font-weight);
+    text-align: start;
+    white-space: normal;
+
+    &[aria-selected="true"] {
+      background-color: transparent;
+      color: var(--color-ink);
+    }
+  }
+
+  @media (min-width: 64rem) and (hover: hover) {
+    &:hover {
+      color: var(--color-ink);
+    }
+
+    &:hover:not([aria-selected="true"]) > [data-ghost] {
+      opacity: 0.35;
+    }
+  }
+}
+
+/* The ghost circle that previews where the marker will land. Desktop hover only. */
+@utility audience-ghost {
+  display: none;
+
+  @media (min-width: 64rem) {
+    position: absolute;
+    inset-inline-start: 0;
+    inset-block-start: 50%;
+    display: block;
+    inline-size: 0.75rem;
+    aspect-ratio: 1;
+    margin-block-start: -0.375rem;
+    border-radius: 50%;
+    background-color: var(--tone-bg);
+    opacity: 0;
+    transition: opacity 300ms var(--ease-out);
+  }
+}
+
+@keyframes audience-in {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}
+
+/* Mount animation for a segment's content. The list is keyed on the segment id, so every
+   switch remounts it and replays this; --i staggers 40ms apart. */
+@utility audience-in {
+  animation: audience-in 450ms var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+@keyframes audience-pop {
+  from {
+    scale: 0.9;
+  }
+}
+
+/* The number in the big total sits on a solid block of the segment colour (the colour
+   classes come from the component). It is keyed on its value, so a change replays this. */
+@utility audience-total-mark {
+  display: inline-block;
+  padding-inline: 0.14em;
+  animation: audience-pop 500ms var(--ease-spring);
+}
+
+/* The sticky total bar. Its entrance is armed from script (data-bar on the panel), so the
+   bar is simply visible without JS: it fades and rises 8px once, transform and opacity only. */
+@utility audience-bar {
+  transition:
+    opacity 400ms var(--ease-out),
+    translate 400ms var(--ease-out);
+
+  [data-bar="armed"] & {
+    opacity: 0;
+    translate: 0 8px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+
+    [data-bar="armed"] & {
+      opacity: 1;
+      translate: none;
+    }
+  }
+}
+
+/* A figure that never wraps: the number bold, the unit words smaller and softer beside it
+   (the hero ledger's treatment). Digits are tabular so two numbers of equal length are
+   equally wide. */
+@utility audience-amount {
+  display: inline-flex;
+  align-items: baseline;
+  column-gap: 0.25em;
+  white-space: nowrap;
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+@utility audience-amount-num {
+  font-weight: 700;
+}
+
+@utility audience-amount-unit {
+  font-size: 0.8em;
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+/* A slot that is always as wide as its widest possible content, so a value that changes
+   with the picks never resizes its surroundings (or re-wraps the sentence it sits in).
+   Two children share one cell: the invisible sizer (the widest value) and the live value,
+   centred, or at the end with data-align="end". The pop animation is a transform, so it
+   never touches layout. */
+@utility audience-slot {
+  display: inline-grid;
+  vertical-align: baseline;
+  font-variant-numeric: tabular-nums;
+
+  > * {
+    grid-area: 1 / 1;
+  }
+
+  > :first-child {
+    visibility: hidden;
+  }
+
+  /* The number's block carries inline padding; the sizer gets the same. */
+  &:has(> .audience-total-mark) > :first-child {
+    padding-inline: 0.14em;
+  }
+
+  > :last-child {
+    justify-self: center;
+  }
+
+  &[data-align="end"] > :last-child {
+    justify-self: end;
+  }
+}
+
+/* ================================================================== services */
+
+/*
+ * `svc-on:` styles a service card (a `group/card`) and everything inside it while the card
+ * is active: a mouse hovers it (fine pointers only, so touch never gets a sticky hover),
+ * keyboard focus is anywhere in it (any device), or, on touch, its FlowInView sentinel
+ * carries data-inview (the card is on screen). The card itself is matched as well as its
+ * descendants, so one variant drives the background, the glyph and the arrow.
+ */
+@custom-variant svc-on {
+  @media (hover: hover) and (pointer: fine) {
+    &:is(:where(.group\/card):hover, :where(.group\/card):hover *) {
+      @slot;
+    }
+  }
+
+  &:is(:where(.group\/card):has(:focus-visible), :where(.group\/card):has(:focus-visible) *) {
+    @slot;
+  }
+
+  @media (hover: none), (pointer: coarse) {
+    &:is(:where(.group\/card):has([data-inview]), :where(.group\/card):has([data-inview]) *) {
+      @slot;
+    }
+  }
+}
+
+/* =================================================================== process */
+
+@keyframes process-grow-x {
+  from {
+    scale: 0 1;
+  }
+}
+
+@keyframes process-grow-y {
+  from {
+    scale: 1 0;
+  }
+}
+
+/*
+ * The proportional bar. --process-tracks (set inline, e.g. "4fr 12fr 24fr ...") is the
+ * single source of the segment widths. Phones: a vertical strip on the start edge, sticky
+ * (a grid item, so it stays inside the row the steps fill) at about a screen's height, so
+ * it travels beside the active step. Desktop: a horizontal bar. The strip is a grid so the
+ * tracks are exact shares.
+ */
+@utility process-bar {
+  display: grid;
+  grid-template-rows: var(--process-tracks);
+  inline-size: 1rem;
+  align-self: start;
+  position: sticky;
+  inset-block-start: 6rem;
+  block-size: max(14rem, calc(100svh - 12rem));
+  max-block-size: 100%;
+
+  @media (min-width: 64rem) {
+    grid-template-rows: none;
+    grid-template-columns: var(--process-tracks);
+    align-self: auto;
+    position: static;
+    inline-size: auto;
+    block-size: 3.5rem;
+    max-block-size: none;
+  }
+}
+
+/*
+ * Grow-in as progressive enhancement: where scroll-driven animations exist, each segment
+ * grows from the start edge as it scrolls into view. No animation = final state, so the
+ * bar is never hidden waiting for anything.
+ */
+@utility process-seg {
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      transform-origin: 50% 0;
+      animation: process-grow-y linear both;
+      animation-timeline: view();
+      animation-range: entry calc(var(--i, 0) * 10%) entry calc(60% + var(--i, 0) * 10%);
+
+      @media (min-width: 64rem) {
+        transform-origin: calc(50% - var(--dir) * 50%) 50%;
+        animation-name: process-grow-x;
+      }
+    }
+  }
+}
+
+/* "Ongoing": subtle diagonal stripes in ink and a slightly lighter ink, ending in an
+   arrow point (down on phones, toward the end edge on desktop, mirrored in RTL). */
+@utility process-run {
+  background-color: var(--color-ink);
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--color-ink) 0 0.5rem,
+    color-mix(in oklab, var(--color-ink), white 16%) 0.5rem 1rem
+  );
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 1rem), 50% 100%, 0 calc(100% - 1rem));
+
+  @media (min-width: 64rem) {
+    clip-path: polygon(0 0, calc(100% - 1.5rem) 0, 100% 50%, calc(100% - 1.5rem) 100%, 0 100%);
+
+    :root[dir="rtl"] & {
+      clip-path: polygon(100% 0, 1.5rem 0, 0 50%, 1.5rem 100%, 100% 100%);
+    }
+  }
+}
+
+/*
+ * Linked highlight between the bar and the step columns. The client leaf only sets
+ * data-active (0-3) on the wrapper; everything visual is here. Active: its bar segments
+ * lift 4px (sideways on the phone strip), the numeral takes the step colour. Everything
+ * else dims. Reduced motion collapses the transitions through the global rule.
+ */
+@utility process-linked {
+  & span[data-step] {
+    transition:
+      opacity 300ms var(--ease-out),
+      translate 500ms var(--ease-spring);
+  }
+
+  & li[data-step] {
+    transition: opacity 300ms var(--ease-out);
+  }
+
+  & [data-numeral] {
+    transition: color 300ms var(--ease-out);
+  }
+
+  &[data-active="0"] span[data-step]:not([data-step="0"]) {
+    opacity: 0.3;
+  }
+
+  &[data-active="0"] li[data-step]:not([data-step="0"]) {
+    opacity: 0.4;
+  }
+
+  &[data-active="0"] span[data-step="0"] {
+    translate: calc(var(--dir) * 4px) 0;
+
+    @media (min-width: 64rem) {
+      translate: 0 -4px;
+    }
+  }
+
+  &[data-active="0"] li[data-step="0"] [data-numeral] {
+    color: var(--color-ultra);
+  }
+
+  &[data-active="1"] span[data-step]:not([data-step="1"]) {
+    opacity: 0.3;
+  }
+
+  &[data-active="1"] li[data-step]:not([data-step="1"]) {
+    opacity: 0.4;
+  }
+
+  &[data-active="1"] span[data-step="1"] {
+    translate: calc(var(--dir) * 4px) 0;
+
+    @media (min-width: 64rem) {
+      translate: 0 -4px;
+    }
+  }
+
+  &[data-active="1"] li[data-step="1"] [data-numeral] {
+    color: var(--color-sun);
+  }
+
+  &[data-active="2"] span[data-step]:not([data-step="2"]) {
+    opacity: 0.3;
+  }
+
+  &[data-active="2"] li[data-step]:not([data-step="2"]) {
+    opacity: 0.4;
+  }
+
+  &[data-active="2"] span[data-step="2"] {
+    translate: calc(var(--dir) * 4px) 0;
+
+    @media (min-width: 64rem) {
+      translate: 0 -4px;
+    }
+  }
+
+  &[data-active="2"] li[data-step="2"] [data-numeral] {
+    color: var(--color-mint);
+  }
+
+  &[data-active="3"] span[data-step]:not([data-step="3"]) {
+    opacity: 0.3;
+  }
+
+  &[data-active="3"] li[data-step]:not([data-step="3"]) {
+    opacity: 0.4;
+  }
+
+  &[data-active="3"] span[data-step="3"] {
+    translate: calc(var(--dir) * 4px) 0;
+
+    @media (min-width: 64rem) {
+      translate: 0 -4px;
+    }
+  }
+
+  &[data-active="3"] li[data-step="3"] [data-numeral] {
+    color: var(--color-ink);
+  }
+}

@@ -1,26 +1,607 @@
 @import "tailwindcss";
+@import "./styles/hero.css";
+@import "./styles/home-sections.css";
+@import "./styles/home-proof.css";
+@import "./styles/pages.css";
+@import "./styles/transitions.css";
+@import "./styles/chrome.css";
+@import "./styles/flow.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Nova design tokens. `static` keeps every variable on :root (inspectable, usable
+ * with var() anywhere) instead of only the ones a utility happened to touch.
+ *
+ * The palette, the type scale and the easing set REPLACE Tailwind's defaults on
+ * purpose: there is no `text-sm`, `bg-gray-500` or `ease-in`. If a class does
+ * nothing, it is not part of the system.
+ */
+@theme static {
+  --color-*: initial;
+  --color-paper: #f2f3f7;
+  --color-white: #ffffff;
+  --color-ink: #14151c;
+  --color-ink-soft: #5b5e6b;
+  --color-line: #e2e4ea;
+  --color-ultra: #3b2dff;
+  --color-sun: #ffc530;
+  --color-mint: #18c98c;
+  --color-haze: #e4e1ff;
+  --color-mist: #d3f5e8;
+  --color-butter: #fff0c2;
+
+  /* Satoshi first, always: Latin words (and the Nova wordmark) inside Farsi text stay
+     Satoshi, and Farsi glyphs fall through to the next family. Swapped under :lang(fa). */
+  --font-sans: var(--font-satoshi), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-satoshi), ui-sans-serif, system-ui, sans-serif;
+
+  /* Fluid type scale. Every size carries its line-height, tracking and weight so
+     `text-h2` is the whole decision. Farsi overrides live in the base layer below. */
+  --text-*: initial;
+  --text-display: clamp(2.75rem, 1.5rem + 4.2vw, 5.5rem);
+  --text-display--line-height: 0.88;
+  --text-display--letter-spacing: -0.04em;
+  --text-display--font-weight: 800;
+  --text-title: clamp(2.5rem, 1.5rem + 3vw, 4.25rem);
+  --text-title--line-height: 0.9;
+  --text-title--letter-spacing: -0.035em;
+  --text-title--font-weight: 800;
+  --text-h2: clamp(1.875rem, 1.25rem + 1.9vw, 3.25rem);
+  --text-h2--line-height: 1;
+  --text-h2--letter-spacing: -0.03em;
+  --text-h2--font-weight: 700;
+  --text-h3: clamp(1.25rem, 1.15rem + 0.35vw, 1.5rem);
+  --text-h3--line-height: 1.15;
+  --text-h3--letter-spacing: -0.015em;
+  --text-h3--font-weight: 700;
+  --text-lede: clamp(1.0625rem, 0.98rem + 0.35vw, 1.25rem);
+  --text-lede--line-height: 1.5;
+  --text-lede--letter-spacing: 0;
+  --text-lede--font-weight: 400;
+  --text-stat: clamp(1.5rem, 1.2rem + 1vw, 2.25rem);
+  --text-stat--line-height: 1.1;
+  --text-stat--letter-spacing: -0.025em;
+  --text-stat--font-weight: 700;
+  --text-body: 1rem;
+  --text-body--line-height: 1.6;
+  --text-body--letter-spacing: 0;
+  --text-body--font-weight: 400;
+  /* 13px is the floor: nothing on this site is smaller. */
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.25;
+  --text-label--letter-spacing: 0.08em;
+  --text-label--font-weight: 600;
+
+  --text-wordmark: 1.5rem;
+  --text-wordmark--line-height: 1;
+  --text-wordmark--letter-spacing: -0.04em;
+  --text-wordmark--font-weight: 900;
+
+  /* Motion. The spring overshoots a touch: use it for shape/position/size morphs,
+     never for opacity. `soft` is the same idea with ~4% overshoot, for things that
+     must stay inside the viewport (the nav island's width). */
+  --ease-*: initial;
+  --ease-spring: linear(
+    0,
+    0.009,
+    0.035 2.1%,
+    0.141,
+    0.281 6.7%,
+    0.723 12.9%,
+    0.938 16.7%,
+    1.017,
+    1.077 20.4%,
+    1.121,
+    1.149 24.3%,
+    1.159,
+    1.163,
+    1.161,
+    1.154 29.9%,
+    1.129 32.8%,
+    1.051 39.6%,
+    1.017 43.1%,
+    0.991,
+    0.977 51%,
+    0.974 53.8%,
+    0.975 57.1%,
+    0.997 69.8%,
+    1.003 76.9%,
+    1
+  );
+  --ease-spring-soft: linear(
+    0,
+    0.03,
+    0.105,
+    0.206,
+    0.321,
+    0.438,
+    0.549,
+    0.652,
+    0.741,
+    0.818,
+    0.88,
+    0.93,
+    0.968,
+    0.996,
+    1.016,
+    1.028,
+    1.035,
+    1.038,
+    1.038,
+    1.036,
+    1.032,
+    1.028,
+    1.023,
+    1.019,
+    1.015,
+    1.011,
+    1.008,
+    1.006,
+    1.003,
+    1.002,
+    1.001,
+    1,
+    1
+  );
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --radius-card: 1.75rem;
+  --radius-pill: 999px;
+
+  /* Layout. `px-gutter`, `py-section`, `max-w-site`, `gap-gridgap` are the vocabulary. */
+  --container-site: 90rem;
+  --container-lede: 36ch;
+  --spacing-gutter: clamp(1rem, 4vw, 3.5rem);
+  --spacing-section: clamp(6rem, 12vw, 11rem);
+  --spacing-gridgap: clamp(1rem, 2.2vw, 2rem);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Reading direction as a number, for translate/rotate that must mirror in RTL. */
+    --dir: 1;
+    --arrow-shift: calc(var(--dir) * 0.25rem);
+    /* Clip-path wipes start from the start edge of the reading direction. */
+    --wipe-r: 100%;
+    --wipe-l: 0%;
+    color-scheme: light;
+    scroll-padding-top: 6rem;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  :root[dir="rtl"] {
+    --dir: -1;
+    --wipe-r: 0%;
+    --wipe-l: 100%;
+  }
+
+  /* Farsi: Vazirmatn for body, Alexandria for display, Satoshi still first. Alexandria is
+     visually larger and wider than Satoshi, so the display sizes step down, tracking goes
+     to zero (it would break the joins) and leading opens up for the vowel marks. */
+  :root:lang(fa) {
+    /* --font-satoshi-fa is Satoshi with shifted ascent/descent so Persian glyphs centre in their
+       line box (lib/fonts.ts). It only exists on /fa. */
+    --font-sans: var(--font-satoshi-fa), var(--font-vazirmatn), Tahoma, sans-serif;
+    --font-display: var(--font-satoshi-fa), var(--font-alexandria), var(--font-vazirmatn), sans-serif;
+
+    --text-display: clamp(2rem, 1.1rem + 3vw, 4rem);
+    --text-display--line-height: 1.35;
+    --text-display--letter-spacing: 0;
+    --text-display--font-weight: 700;
+    --text-title: clamp(1.9rem, 1.1rem + 2.25vw, 3.1rem);
+    --text-title--line-height: 1.35;
+    --text-title--letter-spacing: 0;
+    --text-title--font-weight: 700;
+    --text-h2: clamp(1.5rem, 1rem + 1.45vw, 2.5rem);
+    --text-h2--line-height: 1.35;
+    --text-h2--letter-spacing: 0;
+    --text-h2--font-weight: 700;
+    --text-h3: clamp(1.125rem, 1.05rem + 0.3vw, 1.375rem);
+    --text-h3--line-height: 1.5;
+    --text-h3--letter-spacing: 0;
+    --text-lede: clamp(1.0625rem, 0.98rem + 0.3vw, 1.1875rem);
+    --text-stat: clamp(1.25rem, 1rem + 0.85vw, 1.8rem);
+    --text-stat--line-height: 1.4;
+    --text-stat--letter-spacing: 0;
+    --text-lede--line-height: 1.9;
+    --text-body: 1rem;
+    --text-body--line-height: 1.9;
+    --text-label: 0.8125rem;
+    --text-label--line-height: 1.5;
+    --text-label--letter-spacing: 0;
+    --text-label--font-weight: 500;
+  }
+
+  body {
+    min-height: 100svh;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
+  p,
+  li,
+  blockquote,
+  figcaption {
+    text-wrap: pretty;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    background-color: var(--color-ultra);
+    color: var(--color-white);
+  }
+
+  /* Never let an animation or transition make content wait: with reduced motion
+     everything lands in a frame, nothing loops. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 1ms !important;
+      animation-delay: 0s !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+      transition-delay: 0s !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    :root {
+      scroll-behavior: smooth;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ------------------------------------------------------------------ type */
+
+/* The logo wordmark is Latin "NOVA" on every page: it keeps the original Satoshi, not the
+   Farsi-adjusted instance in the fa stack. Unlayered, so it wins over body's font-sans. */
+.text-wordmark {
+  font-family: var(--font-satoshi), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Small precise label: uppercase tracked in Latin, plain in Farsi. */
+@utility label {
+  font-size: var(--text-label);
+  line-height: var(--text-label--line-height);
+  letter-spacing: var(--text-label--letter-spacing);
+  font-weight: var(--text-label--font-weight);
+  text-transform: uppercase;
+
+  &:lang(fa) {
+    text-transform: none;
+  }
+}
+
+/* The ultra full stop at the end of the hero headline: an inline circle that sits on the
+   baseline and scales with the type. */
+@utility headline-dot {
+  display: inline-block;
+  inline-size: 0.17em;
+  aspect-ratio: 1;
+  margin-inline-start: 0.06em;
+}
+
+/* ---------------------------------------------------------------- layout */
+
+/* The Swiss grid: 4 columns on phones, 6 on tablets, 12 from 1024px. */
+@utility grid-swiss {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: var(--spacing-gridgap);
+
+  @media (min-width: 48rem) {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  @media (min-width: 64rem) {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------- shapes */
+
+/*
+ * Five shapes, one box. Radii are logical corners so a quarter disc rounds its
+ * top-START corner and mirrors in RTL; rotation is multiplied by --dir for the same
+ * reason. Shape, colour and rotation are all custom-property swaps, so a parent can
+ * morph a child with plain variants:  group-hover:shape-arch  group-hover:shape-r-90.
+ */
+@utility shape {
+  display: block;
+  flex: none;
+  aspect-ratio: 1;
+  background-color: var(--shape-bg, var(--color-ink));
+  border-start-start-radius: var(--shape-ss, 50%);
+  border-start-end-radius: var(--shape-se, 50%);
+  border-end-end-radius: var(--shape-ee, 50%);
+  border-end-start-radius: var(--shape-es, 50%);
+  rotate: calc(var(--dir) * var(--shape-r, 0deg));
+  transition-property:
+    border-start-start-radius, border-start-end-radius, border-end-end-radius,
+    border-end-start-radius, rotate, translate, scale, background-color;
+  transition-duration: 700ms, 700ms, 700ms, 700ms, 700ms, 700ms, 700ms, 400ms;
+  transition-timing-function:
+    var(--ease-spring), var(--ease-spring), var(--ease-spring), var(--ease-spring),
+    var(--ease-spring), var(--ease-spring), var(--ease-spring), var(--ease-out);
+}
+
+@utility shape-circle {
+  --shape-ss: 50%;
+  --shape-se: 50%;
+  --shape-ee: 50%;
+  --shape-es: 50%;
+}
+
+@utility shape-square {
+  --shape-ss: 0%;
+  --shape-se: 0%;
+  --shape-ee: 0%;
+  --shape-es: 0%;
+}
+
+@utility shape-quarter {
+  --shape-ss: 100%;
+  --shape-se: 0%;
+  --shape-ee: 0%;
+  --shape-es: 0%;
+}
+
+@utility shape-arch {
+  --shape-ss: 50%;
+  --shape-se: 50%;
+  --shape-ee: 0%;
+  --shape-es: 0%;
+}
+
+@utility shape-leaf {
+  --shape-ss: 100%;
+  --shape-se: 0%;
+  --shape-ee: 100%;
+  --shape-es: 0%;
+}
+
+@utility shape-ultra {
+  --shape-bg: var(--color-ultra);
+}
+
+@utility shape-sun {
+  --shape-bg: var(--color-sun);
+}
+
+@utility shape-mint {
+  --shape-bg: var(--color-mint);
+}
+
+@utility shape-ink {
+  --shape-bg: var(--color-ink);
+}
+
+@utility shape-haze {
+  --shape-bg: var(--color-haze);
+}
+
+@utility shape-mist {
+  --shape-bg: var(--color-mist);
+}
+
+@utility shape-butter {
+  --shape-bg: var(--color-butter);
+}
+
+@utility shape-white {
+  --shape-bg: var(--color-white);
+}
+
+@utility shape-r-0 {
+  --shape-r: 0deg;
+}
+
+@utility shape-r-90 {
+  --shape-r: 90deg;
+}
+
+@utility shape-r-180 {
+  --shape-r: 180deg;
+}
+
+@utility shape-r-270 {
+  --shape-r: 270deg;
+}
+
+/* ---------------------------------------------------------------- motion */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+}
+
+@keyframes pop {
+  from {
+    scale: 0.6;
+  }
+}
+
+/* Page-load entrances. Keyframes only describe the START, so with animations off the
+   element simply sits in its final state. Stagger with style={{ "--i": n }}. */
+@utility rise-in {
+  animation: rise 700ms var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+@utility pop-in {
+  animation: pop 800ms var(--ease-spring) backwards;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+/* Fill wipe from the start edge: put `wipe` on an absolutely positioned fill layer and
+   `group-hover/x:wipe-on group-focus-visible/x:wipe-on` on it. Pure clip-path. */
+@utility wipe {
+  clip-path: inset(0 var(--wipe-r) 0 var(--wipe-l));
+  transition: clip-path 550ms var(--ease-out);
+}
+
+@utility wipe-on {
+  clip-path: inset(0 0 0 0);
+}
+
+/* -------------------------------------------------------------------- nav */
+
+/*
+ * The island. Every width is a definite value so the width transition is real:
+ *   phone closed   18rem            phone menu open   viewport - 2rem
+ *   desktop top    38rem            desktop scrolled  min(viewport - 2rem, 76rem)
+ * Closed height is 3.5rem, so the 1.75rem radius already IS a pill; the radius never
+ * needs to animate.
+ */
+@utility nav-island {
+  width: min(100% - 2rem, 18rem);
+  border-radius: var(--radius-card);
+  transition-property: width, background-color;
+  transition-duration: 600ms, 400ms;
+  transition-timing-function: var(--ease-spring-soft), var(--ease-out);
+  /* Lifted out of the page layers so route transitions never move it (transitions.css). */
+  view-transition-name: site-nav;
+
+  &[data-open] {
+    width: calc(100% - 2rem);
+  }
+
+  /* Desktop morph. Expanding, the island starts widening at once and the CTA arrives while
+     it does (nav-cta below); collapsing runs backwards, so the island narrows last, after
+     the CTA has folded away and its circle has left. Everything that arrives late is on
+     ease-out: only the width gets the (soft) spring, so nothing overshoots the island. */
+  @media (min-width: 48rem) {
+    width: 38rem;
+    transition-duration: 540ms, 400ms;
+    transition-delay: 360ms, 0s;
+
+    &[data-expanded] {
+      width: min(100% - 2rem, 76rem);
+      transition-duration: 800ms, 400ms;
+      transition-delay: 0s;
+    }
+  }
+}
+
+/*
+ * The island's "Book a free call" pill is always a real pill: collapsed it is a 2.5rem
+ * circle holding only the arrow, scaled to nothing, with a negative start margin that
+ * cancels its width so the end cluster is as wide as the language link alone. Three parts:
+ *   nav-cta        the pill: scale pop + its slot opening beside the language link
+ *   nav-cta-fold   a 0fr -> 1fr column INSIDE the pill that unfolds the label
+ *   nav-cta-label  the label's opacity, so text is never seen cropped mid-letter
+ * Expand (ms from the island starting to widen; the island itself runs 0-800):
+ *   120-570 circle pops (spring)   300-900 pill unfolds   550-850 label fades in
+ * Collapse (the island's own width follows at 360-900):
+ *   0-150 label fades   0-450 pill folds   250-550 circle scales out
+ * The pill ends on the island's end edge, so it scales from there (--dir flips it in RTL)
+ * and unfolds toward the links, never past the island.
+ */
+@utility nav-cta {
+  margin-inline-start: -2.5rem;
+  scale: 0;
+  transform-origin: calc(50% + var(--dir) * 50%) 50%;
+  transition:
+    scale 300ms var(--ease-out) 250ms,
+    margin-inline-start 300ms var(--ease-out) 250ms,
+    background-color 300ms var(--ease-out);
+
+  [data-expanded] & {
+    margin-inline-start: 0;
+    scale: 1;
+    transition:
+      scale 450ms var(--ease-spring) 120ms,
+      margin-inline-start 450ms var(--ease-out) 120ms,
+      background-color 300ms var(--ease-out);
+  }
+}
+
+@utility nav-cta-fold {
+  display: grid;
+  grid-template-columns: 0fr;
+  transition: grid-template-columns 450ms var(--ease-out);
+
+  [data-expanded] & {
+    grid-template-columns: 1fr;
+    transition-duration: 600ms;
+    transition-delay: 300ms;
+  }
+}
+
+@utility nav-cta-label {
+  opacity: 0;
+  transition: opacity 150ms var(--ease-out);
+
+  [data-expanded] & {
+    opacity: 1;
+    transition-duration: 300ms;
+    transition-delay: 550ms;
+  }
+}
+
+/* The mobile panel grows open beneath the top row (0fr -> 1fr). Hidden from AT and
+   from the tab order while closed (visibility flips after the close finishes). */
+@utility nav-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows 600ms var(--ease-spring),
+    visibility 0s linear 600ms;
+
+  [data-open] > & {
+    grid-template-rows: 1fr;
+    visibility: visible;
+    transition-delay: 0s, 0s;
+  }
+}
+
+/* Staggered entrance of the panel's contents, 40ms apart (--i), reversed on close. */
+@utility panel-item {
+  opacity: 0;
+  translate: 0 0.75rem;
+  transition:
+    opacity 350ms var(--ease-out) calc((5 - var(--i, 0)) * 40ms),
+    translate 600ms var(--ease-out) calc((5 - var(--i, 0)) * 40ms);
+
+  [data-open] & {
+    opacity: 1;
+    translate: 0 0;
+    transition-delay: calc(var(--i, 0) * 40ms + 120ms);
+  }
 }

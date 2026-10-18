@@ -1,0 +1,454 @@
+/*
+ * Workflow language: nodes, ports, wires, comets and the dot-grid canvas. Tailwind @utility
+ * blocks and keyframes only. Components live in components/flow/.
+ *
+ * "Running" is one class, `flow-on`, on a fragment, a wire or any ancestor of them (a card
+ * switches it through `flow-trigger`, below). It turns the wires ultra with a faint wider
+ * conduit behind them, sends comets along them (each one rings the receiving port as it
+ * lands), lights the ports and lets a node that is marked `data-finish` turn mint with a check.
+ * Without it everything is a still diagram; with reduced motion the comets, the ripples and
+ * the wiggle never appear.
+ */
+
+/* ---------------------------------------------------------------- canvas */
+
+/* The node-editor dot grid. Put a tint on the same element (bg-haze, bg-mist, bg-butter). */
+@utility canvas {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-ink) 8%, transparent) 1.25px,
+    transparent 1.75px
+  );
+  background-size: 16px 16px;
+  background-position: center;
+}
+
+/* ----------------------------------------------------------------- nodes */
+
+@utility flow-node {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--node-bg, var(--color-white));
+  color: var(--node-fg, var(--color-ink));
+  box-shadow: inset 0 0 0 var(--node-ring-w, 1px) var(--node-ring, color-mix(in srgb, var(--color-ink) 10%, transparent));
+  transition:
+    background-color 350ms var(--ease-out),
+    color 350ms var(--ease-out),
+    box-shadow 350ms var(--ease-out);
+
+  &[data-variant="plain"] {
+    --node-bg: var(--color-paper);
+  }
+
+  &[data-variant="agent"] {
+    --node-bg: var(--color-ultra);
+    --node-fg: var(--color-white);
+    --node-ring: transparent;
+  }
+
+  &[data-variant="done"] {
+    --node-bg: var(--color-mint);
+    --node-ring: transparent;
+  }
+
+  &[data-active] {
+    --node-ring: var(--color-ultra);
+    --node-ring-w: 2px;
+  }
+}
+
+/* The two faces of a node tile share one grid cell: the icon at rest, a check once the
+   flow runs (only nodes marked `data-finish`; see flow-on). */
+@utility flow-tile-a {
+  grid-area: 1 / 1;
+  transition:
+    opacity 250ms var(--ease-out),
+    scale 450ms var(--ease-spring);
+}
+
+@utility flow-tile-b {
+  grid-area: 1 / 1;
+  opacity: 0;
+  scale: 0.6;
+  transition:
+    opacity 250ms var(--ease-out),
+    scale 450ms var(--ease-spring);
+}
+
+/* PORT: 8px circle on a node's edge, where a wire attaches. */
+@utility flow-port {
+  position: absolute;
+  z-index: 2;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background-color: var(--color-paper);
+  box-shadow: 0 0 0 1.5px var(--port-ring, var(--color-ink));
+  transition:
+    background-color 300ms var(--ease-out),
+    box-shadow 300ms var(--ease-out);
+}
+
+/* ----------------------------------------------------------------- wires */
+
+/*
+ * The 2px line. Orientation is its own utility so `flow-wire-v md:flow-wire-h` works, and it
+ * only sets variables (the comet's box, its way home, where the pseudo-elements sit) so the
+ * two never fight when both apply. Two pseudo-elements, both still until the flow runs:
+ *  - ::before, the conduit: a 6px ultra line at 12% behind the wire (opacity only);
+ *  - ::after, the ripple: a ring on the wire's far end, which is the receiving node's in-port.
+ * It sits above the nodes (z-index 2) so the ring is not cut off by the node it lands on.
+ */
+@utility flow-wire {
+  position: relative;
+  z-index: 2;
+  border-radius: 1px;
+  background-color: var(--wire, color-mix(in srgb, var(--color-ink) 30%, transparent));
+  transition: background-color 400ms var(--ease-out);
+  /* One trip, and when this wire's first comet sets off: `--hop` wires upstream each hand
+     the work on at the moment their comet lands (88% of a trip), `--lag` adds to that. */
+  --wire-dur: var(--flow-dur, var(--comet-dur, 1600ms));
+  --wire-t0: calc(var(--lag, 0ms) + var(--hop, 0) * var(--wire-dur) * 0.88);
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: var(--cd-inset, -2px 0);
+    border-radius: 3px;
+    background-color: var(--color-ultra);
+    opacity: var(--conduit, 0);
+    transition: opacity 400ms var(--ease-out);
+    pointer-events: none;
+  }
+
+  /* 11px = the port plus its ring. One ripple per comet: the period is a trip divided by the
+     comets, the first one is due as the first comet lands, every later one as its comet does. */
+  &::after {
+    content: "";
+    position: absolute;
+    inset-block-start: var(--rip-bs, auto);
+    inset-block-end: var(--rip-be, auto);
+    inset-inline-start: var(--rip-is, auto);
+    inset-inline-end: var(--rip-ie, auto);
+    box-sizing: border-box;
+    inline-size: 11px;
+    block-size: 11px;
+    border: 1.5px solid var(--color-ultra);
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+    animation-name: var(--ripple, none);
+    animation-duration: calc(var(--wire-dur) / var(--n, 1));
+    animation-delay: calc(var(--wire-t0) + var(--wire-dur) * 0.88);
+    animation-timing-function: var(--ease-out);
+    animation-iteration-count: infinite;
+  }
+}
+
+@utility flow-wire-v {
+  flex: none;
+  inline-size: 2px;
+  min-inline-size: 0;
+  block-size: var(--wire-len, 2.5rem);
+  container-type: size;
+  --comet-dur: 1200ms;
+  --end-x: 0px;
+  --end-y: max(0px, calc(100cqb - 22px));
+  --pmx: -0.5px;
+  --pmy: 0px;
+  --cm-w: 3px;
+  --cm-h: 22px;
+  --cm-to: bottom;
+  --cm-flip: 1;
+  --hd-inset: auto auto 0 calc(50% - 2.5px);
+  --cd-inset: 0 -2px;
+  --rip-bs: auto;
+  --rip-be: -5.5px;
+  --rip-is: calc(50% - 5.5px);
+  --rip-ie: auto;
+}
+
+@utility flow-wire-h {
+  flex: 1 1 0;
+  inline-size: auto;
+  min-inline-size: var(--wire-min, 1rem);
+  block-size: 2px;
+  container-type: inline-size;
+  --comet-dur: 1600ms;
+  --end-x: calc(var(--dir) * max(0px, 100cqi - 22px));
+  --end-y: 0px;
+  --pmx: 0px;
+  --pmy: -0.5px;
+  --cm-w: 22px;
+  --cm-h: 3px;
+  --cm-to: right;
+  --cm-flip: var(--dir);
+  --hd-inset: calc(50% - 2.5px) 0 auto auto;
+  --cd-inset: -2px 0;
+  --rip-bs: calc(50% - 5.5px);
+  --rip-be: auto;
+  --rip-is: auto;
+  --rip-ie: -5.5px;
+}
+
+/*
+ * COMET: a 5px round ultra head (::before) trailing an ~18px tail that fades to nothing, all
+ * one 22 x 3px pill with a gradient. It points the way it travels: the head sits on the
+ * physical end of the box and a horizontal comet is mirrored with `--dir` in RTL. Hidden until
+ * the flow runs.
+ */
+@utility flow-comet {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 0;
+  margin-inline-start: var(--pmx, 0px);
+  margin-block-start: var(--pmy, 0px);
+  inline-size: var(--cm-w, 22px);
+  block-size: var(--cm-h, 3px);
+  scale: var(--cm-flip, 1) 1;
+  border-radius: 999px;
+  background-image: linear-gradient(to var(--cm-to, right), transparent, var(--color-ultra) 85%);
+  opacity: 0;
+  pointer-events: none;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: var(--hd-inset);
+    inline-size: 5px;
+    block-size: 5px;
+    border-radius: 50%;
+    background-color: var(--color-ultra);
+  }
+}
+
+/* The comet leaves a port quickly, coasts, settles into the next (the curve is set where the
+   animation runs). Fades in over the first tenth of the trip and out over the last. */
+@keyframes flow-travel {
+  0% {
+    translate: 0 0;
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    translate: var(--end-x) var(--end-y);
+    opacity: 0;
+  }
+}
+
+/* The ring a landing comet leaves on the receiving port. Over by 60% of its period. */
+@keyframes flow-ripple {
+  0% {
+    scale: 1;
+    opacity: 0.5;
+  }
+
+  60%,
+  100% {
+    scale: 2.6;
+    opacity: 0;
+  }
+}
+
+@keyframes flow-wiggle {
+  20% {
+    rotate: -14deg;
+  }
+
+  40% {
+    rotate: 12deg;
+  }
+
+  60% {
+    rotate: -8deg;
+  }
+
+  80% {
+    rotate: 4deg;
+  }
+}
+
+/* ------------------------------------------------------------- fragments */
+
+/* A fragment lays its nodes and wires out on one axis: row, column, or column until md (r) or xl (x). */
+@utility flow-fragment {
+  display: flex;
+  align-items: center;
+
+  &[data-orient="h"] {
+    flex-direction: row;
+  }
+
+  &[data-orient="v"],
+  &[data-orient="r"],
+  &[data-orient="x"] {
+    flex-direction: column;
+  }
+
+  &[data-orient="r"] {
+    @media (min-width: 48rem) {
+      flex-direction: row;
+    }
+  }
+
+  &[data-orient="x"] {
+    @media (min-width: 80rem) {
+      flex-direction: row;
+    }
+  }
+
+  /* Ports sit on the edge a wire leaves or enters by: top/bottom in a column, start/end in a row. */
+  &[data-orient="v"] [data-edge="in"],
+  &[data-orient="r"] [data-edge="in"],
+  &[data-orient="x"] [data-edge="in"] {
+    inset-block-start: -4px;
+    inset-inline-start: 50%;
+    margin-inline-start: -4px;
+  }
+
+  &[data-orient="v"] [data-edge="out"],
+  &[data-orient="r"] [data-edge="out"],
+  &[data-orient="x"] [data-edge="out"] {
+    inset-block-end: -4px;
+    inset-inline-start: 50%;
+    margin-inline-start: -4px;
+  }
+
+  &[data-orient="h"] [data-edge="in"] {
+    inset-inline-start: -4px;
+    inset-block-start: 50%;
+    margin-block-start: -4px;
+  }
+
+  &[data-orient="h"] [data-edge="out"] {
+    inset-inline-end: -4px;
+    inset-block-start: 50%;
+    margin-block-start: -4px;
+  }
+
+  &[data-orient="r"] {
+    @media (min-width: 48rem) {
+      & [data-edge="in"] {
+        inset-block-start: 50%;
+        inset-inline-start: -4px;
+        margin-inline-start: 0;
+        margin-block-start: -4px;
+      }
+
+      & [data-edge="out"] {
+        inset-block-end: auto;
+        inset-block-start: 50%;
+        inset-inline-end: -4px;
+        inset-inline-start: auto;
+        margin-inline-start: 0;
+        margin-block-start: -4px;
+      }
+    }
+  }
+
+  &[data-orient="x"] {
+    @media (min-width: 80rem) {
+      & [data-edge="in"] {
+        inset-block-start: 50%;
+        inset-inline-start: -4px;
+        margin-inline-start: 0;
+        margin-block-start: -4px;
+      }
+
+      & [data-edge="out"] {
+        inset-block-end: auto;
+        inset-block-start: 50%;
+        inset-inline-end: -4px;
+        inset-inline-start: auto;
+        margin-inline-start: 0;
+        margin-block-start: -4px;
+      }
+    }
+  }
+}
+
+/* -------------------------------------------------------------- running */
+
+@utility flow-on {
+  --wire: var(--color-ultra);
+  --port-ring: var(--color-ultra);
+  --conduit: 0.12;
+  --ripple: flow-ripple;
+
+  & .flow-comet {
+    animation: flow-travel var(--wire-dur, 1600ms) cubic-bezier(0.5, 0, 0.3, 1) infinite;
+    animation-delay: calc(var(--wire-t0, 0ms) + var(--i, 0) * var(--wire-dur, 1600ms) / var(--n, 1));
+  }
+
+  & .flow-port {
+    background-color: var(--color-ultra);
+  }
+
+  & .flow-node[data-finish] {
+    --node-bg: var(--color-mint);
+    --node-fg: var(--color-ink);
+    --node-ring: transparent;
+  }
+
+  & .flow-node[data-finish] .flow-tile-a {
+    opacity: 0;
+    scale: 0.6;
+  }
+
+  & .flow-node[data-finish] .flow-tile-b {
+    opacity: 1;
+    scale: 1;
+  }
+
+  & .flow-node[data-agent] .flow-icon {
+    animation: flow-wiggle 700ms var(--ease-out) 150ms;
+  }
+}
+
+/*
+ * TRIGGER: put `flow-trigger` on a fragment inside a `group/case` card and it runs `flow-on`
+ * (the one definition above) when
+ *  - a mouse hovers the card (only where hover is real, so touch never gets a sticky hover),
+ *  - keyboard focus is anywhere in the card, on any device,
+ *  - or, on touch, the diagram's wrapper carries `data-inview` (FlowInView sets it while the
+ *    diagram is on screen, so phones see the same motion).
+ */
+@utility flow-trigger {
+  @media (hover: hover) and (pointer: fine) {
+    &:is(:where(.group\/case):hover *) {
+      @apply flow-on;
+    }
+  }
+
+  &:is(:where(.group\/case):has(:focus-visible) *) {
+    @apply flow-on;
+  }
+
+  @media (hover: none), (pointer: coarse) {
+    &:is(:where([data-inview]) *) {
+      @apply flow-on;
+    }
+  }
+}
+
+/* Reduced motion: the diagram stays, the comets, the ripples and the wiggle do not. */
+@media (prefers-reduced-motion: reduce) {
+  .flow-comet,
+  .flow-wire::after {
+    display: none;
+  }
+
+  .flow-node[data-agent] .flow-icon {
+    animation: none;
+  }
+}

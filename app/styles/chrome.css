@@ -1,0 +1,305 @@
+/* Owned by one engineer. Tailwind @utility blocks, keyframes and view-transition rules only. */
+
+/* ------------------------------------------------------------ footer wordmark */
+
+/*
+ * The giant "NOVA": an SVG whose viewBox is as wide as the word (textLength pins it), so it spans
+ * the container at any width. Font-size 100 units, Satoshi Black cap height 0.74: the viewBox is
+ * 88% of the cap height tall (65), so the last 12% of the letters bleeds off the bottom.
+ */
+@utility wordmark-frame {
+  direction: ltr;
+}
+
+@utility wordmark {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+  font-family: var(--font-satoshi), ui-sans-serif, system-ui, sans-serif;
+  font-size: 100px;
+  font-weight: 900;
+  /* White at 92% over the ink field, mixed opaque. */
+  /* A quiet watermark on the indigo field, not a second headline. */
+  fill: color-mix(in srgb, var(--color-white) 14%, transparent);
+}
+
+/* ------------------------------------------------------------------ thread */
+
+/*
+ * The thread: one 2px line down the whole page, just outside the container's start edge
+ * (half a gutter out, so it never runs under a card). Everything here is geometry from the
+ * same Container + grid-swiss maths as the content, so it mirrors in RTL for free.
+ *
+ *   thread-layer   page-high box in <body>; its top is --thread-top (hero bottom on home,
+ *                  the first rule on inner pages). Opaque full-bleed fields in the footer
+ *                  sit above it and simply end the line.
+ *   thread-line    the 2px rail. Scroll-driven: drawn down to the viewport bottom.
+ *   thread-rule    a section's hairline with a "+" registration mark on every column edge.
+ *   thread-elbow   the turn from the rail along the rule, in the section's accent.
+ *   thread-node    the station: a Shape that pops in once the line has reached it.
+ * Without scroll-driven animation, or with reduced motion, everything is simply fully drawn.
+ */
+@layer base {
+  body {
+    position: relative;
+  }
+
+  /* --thread-top is where the rail starts (the first rule on inner pages, 11rem / 8rem below the
+     top); --thread-est is the same figure as the draw animation assumes it. */
+  :root {
+    --thread-top: 8rem;
+    --thread-est: var(--thread-top);
+    /* The thread's layer in the root stacking context (see above-thread). */
+    --z-thread: 1;
+  }
+
+  @media (min-width: 64rem) {
+    :root {
+      --thread-top: 11rem;
+    }
+  }
+
+  /* The home page's thread starts where the hero ends: exactly, where CSS anchor positioning
+     exists (see thread-layer); otherwise one screen down, which is the hero's height from lg up.
+     Phones' heroes run taller, so the animation's estimate is larger there. */
+  body:has(#hero) {
+    --thread-top: 100svh;
+    --thread-est: 186svh;
+  }
+
+  @media (min-width: 64rem) {
+    body:has(#hero) {
+      --thread-est: 100svh;
+    }
+  }
+
+  #hero {
+    anchor-name: --hero;
+  }
+}
+
+@utility thread-layer {
+  position: absolute;
+  inset-inline: 0;
+  top: var(--thread-top);
+  bottom: 0;
+  z-index: var(--z-thread);
+  overflow: hidden;
+  pointer-events: none;
+
+  @supports (top: anchor(--hero bottom)) {
+    body:has(#hero) & {
+      top: anchor(--hero bottom);
+    }
+  }
+}
+
+/*
+ * Lifts an element above the thread, so the line passes behind it (cards, rails). The thread is
+ * a z-index layer of the root stacking context, so this works only when no ancestor between the
+ * element and <html> forms a stacking context of its own (isolate, z-index, opacity, transform,
+ * filter, contain: paint...); a section that does would hold the element below the thread.
+ * It has no background of its own: only what it paints (cards) hides the line. The footer
+ * (z-2) sits at the same level and wins on source order; nothing overlaps it.
+ */
+@utility above-thread {
+  position: relative;
+  z-index: calc(var(--z-thread) + 1);
+}
+
+@utility thread-line {
+  position: absolute;
+  inset-block: 0;
+  inline-size: 2px;
+  inset-inline-start: calc(var(--spacing-gutter) / -2 - 1px);
+  background-color: color-mix(in srgb, var(--color-ink) 85%, transparent);
+
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      animation: thread-draw linear both;
+      animation-timeline: scroll(root);
+    }
+  }
+}
+
+/* The drawn front trails the viewport bottom by up to a quarter screen, then catches up to the
+   very end of the page. Percentages are the line's own height; --thread-est converts it to page
+   height. translate (not scale) keeps it on the compositor and the top edge pinned. */
+@keyframes thread-draw {
+  from {
+    translate: 0 calc(75svh - 100% - var(--thread-est));
+  }
+
+  to {
+    translate: 0 0;
+  }
+}
+
+@keyframes thread-pop {
+  from {
+    scale: 0;
+  }
+}
+
+@keyframes thread-turn {
+  from {
+    scale: 0 1;
+  }
+}
+
+/* The hairline, with a registration mark on each column's start edge and on the end edge.
+   The box is 7px wider than the container on each side; tiles are one column pitch wide,
+   (container + gap) / columns, so every "+" lands on a column edge. */
+@utility thread-rule {
+  --plus-start: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' preserveAspectRatio='xMinYMid meet'%3E%3Cpath d='M3.5 0v7M0 3.5h7' fill='none' stroke='%2314151c' stroke-opacity='.25'/%3E%3C/svg%3E");
+  --plus-end: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 7' preserveAspectRatio='xMaxYMid meet'%3E%3Cpath d='M3.5 0v7M0 3.5h7' fill='none' stroke='%2314151c' stroke-opacity='.25'/%3E%3C/svg%3E");
+  --cols: 4;
+  position: absolute;
+  top: -3.5px;
+  block-size: 7px;
+  inset-inline: -3.5px;
+  background-image:
+    var(--plus-end), var(--plus-start),
+    linear-gradient(color-mix(in srgb, var(--color-ink) 15%, transparent), color-mix(in srgb, var(--color-ink) 15%, transparent));
+  background-repeat: no-repeat, repeat-x, no-repeat;
+  background-size:
+    7px 7px,
+    calc((100% - 7px + var(--spacing-gridgap)) / var(--cols)) 7px,
+    calc(100% - 7px) 1px;
+  background-position:
+    right center,
+    left center,
+    3.5px center;
+
+  @media (min-width: 48rem) {
+    --cols: 6;
+  }
+
+  @media (min-width: 64rem) {
+    --cols: 12;
+  }
+
+  /* RTL: columns count from the right, so the tiles and the end mark swap sides. */
+  :root[dir="rtl"] & {
+    background-image:
+      var(--plus-start), var(--plus-end),
+      linear-gradient(color-mix(in srgb, var(--color-ink) 15%, transparent), color-mix(in srgb, var(--color-ink) 15%, transparent));
+    background-position:
+      left center,
+      right center,
+      3.5px center;
+  }
+}
+
+/* From the rail along the rule, ~3rem past the grid edge, in the section's accent. */
+@utility thread-elbow {
+  position: absolute;
+  top: -1px;
+  block-size: 2px;
+  inset-inline-start: calc(var(--spacing-gutter) / -2 - 1px);
+  inline-size: calc(var(--spacing-gutter) / 2 + 1px + 3rem);
+  background-color: var(--thread-accent, var(--color-ultra));
+  transform-origin: left center;
+
+  :root[dir="rtl"] & {
+    transform-origin: right center;
+  }
+
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      animation: thread-turn linear both;
+      animation-timeline: view();
+      animation-range: cover 20% cover 28%;
+    }
+  }
+}
+
+/* The station, centred on the rule's first column edge (10px on phones, 12px from md). */
+@utility thread-node {
+  position: absolute;
+  top: -5px;
+  inset-inline-start: -5px;
+  inline-size: 10px;
+
+  @media (min-width: 48rem) {
+    top: -6px;
+    inset-inline-start: -6px;
+    inline-size: 12px;
+  }
+
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      animation: thread-pop var(--ease-spring) both;
+      animation-timeline: view();
+      animation-range: cover 26% cover 36%;
+    }
+  }
+}
+
+/* Where the rail meets the footer's colour field: a small square cap, half above the edge. */
+@utility thread-cap {
+  position: absolute;
+  top: -4px;
+  inset-inline-start: calc(var(--spacing-gutter) / -2 - 4px);
+  inline-size: 8px;
+  block-size: 8px;
+  background-color: #1b1660; /* the footer field's top colour */
+}
+
+/*
+ * The closing CTA band: butter with a sun dot grid, so it still reads as the warm yellow brand
+ * moment without the full sun field. (The shared `canvas` dots are ink at 8%, too faint on butter.)
+ * The flow nodes lose their edge against butter (white especially, mint a little), so every node but
+ * the ultra agent gets a hairline outline drawn inside its box.
+ */
+@utility cta-band {
+  background-color: var(--color-butter);
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-sun) 40%, transparent) 1.5px,
+    transparent 2px
+  );
+  background-size: 16px 16px;
+  background-position: center;
+
+  & .flow-node:not([data-variant="agent"]) {
+    outline: 1px solid color-mix(in srgb, var(--color-ink) 22%, transparent);
+    outline-offset: -1px;
+  }
+}
+
+/* The footer's field is ink: focus rings turn white, links shift to sun on hover/focus, and the
+   language switch (which carries its own paper-coloured hover) is restyled for a dark field.
+   Unlayered, so it wins. */
+@utility footer-field {
+  /* Deep ultramarine, a touch lighter at the top where it meets the butter band. */
+  background-color: #151048;
+  background-image: linear-gradient(to bottom, #1b1660, #120f3a);
+
+  & :focus-visible {
+    outline-color: var(--color-white);
+  }
+
+  & a[hreflang] {
+    color: var(--color-white);
+  }
+
+  & a[hreflang]:hover,
+  & a[hreflang]:focus-visible {
+    background-color: transparent;
+    color: var(--color-sun);
+  }
+}
+
+/* The footer's shape composition: one slow turn, transform only, still under reduced motion. */
+@keyframes footer-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@utility footer-orbit {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: footer-orbit 70s linear infinite;
+  }
+}

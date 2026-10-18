@@ -1,0 +1,134 @@
+/* Owned by one engineer. Tailwind @utility blocks, keyframes and view-transition rules only. */
+
+/*
+ * Page transitions. React's <ViewTransition> (app/[lang]/layout.tsx) tags
+ * main and the footer with `page-swap`; a route change updates them, so the old and new
+ * snapshots get the out and in animations below. The nav island carries a
+ * permanent name (`site-nav`) so it is lifted out of the page and stays put. No horizontal
+ * motion anywhere, so nothing mirrors in RTL. Unsupported browsers skip all of this. (An en/fa
+ * switch replaces the root layout, so React starts no transition for it.)
+ */
+
+/* The overlay must never swallow clicks while a transition runs. */
+::view-transition {
+  pointer-events: none;
+}
+
+/* The root layer (canvas, grid lines) is identical before and after: no crossfade, and the
+   old copy is dropped so the two never blend. */
+::view-transition-group(root) {
+  animation: none;
+}
+::view-transition-old(root) {
+  display: none;
+}
+::view-transition-new(root) {
+  animation: none;
+}
+
+/* A named element is captured in isolation, so the island's backdrop blur is lost while a
+   transition runs. Near-opaque white for those few hundred ms keeps text behind it from showing. */
+:root:active-view-transition .nav-island {
+  background-color: rgb(255 255 255 / 0.97);
+  transition-duration: 600ms, 0s;
+
+  @media (min-width: 48rem) {
+    transition-duration: 800ms, 0s;
+  }
+}
+
+/* The island: no geometry or fade animation. The new layer is live, so its own CSS
+   transitions (width, expanded, menu) keep playing. Above the sliding page layers. */
+::view-transition-group(site-nav) {
+  animation: none;
+  z-index: 100;
+}
+::view-transition-old(site-nav) {
+  display: none;
+}
+::view-transition-new(site-nav) {
+  animation: none;
+}
+
+/* The two snapshots share one group per element: no size morph between pages. */
+::view-transition-group(.page-swap) {
+  animation: none;
+}
+
+/* Out: 220ms, up 8px. In: 420ms from 16px below, a beat later so the two pages never read
+   as overlapping text. */
+::view-transition-old(.page-swap) {
+  animation: page-out 220ms ease-out both;
+}
+::view-transition-new(.page-swap) {
+  animation: page-in 420ms var(--ease-out) 100ms both;
+}
+
+@keyframes page-out {
+  to {
+    opacity: 0;
+    translate: 0 -8px;
+  }
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+    translate: 0 16px;
+  }
+}
+
+/* Reduced motion: no movement, the old page is dropped and the new one fades in over 120ms. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(.page-swap) {
+    display: none;
+  }
+  ::view-transition-new(.page-swap) {
+    animation: page-fade 120ms linear both;
+  }
+}
+
+@keyframes page-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/*
+ * Pending navigation. While a nav link's navigation is in flight (components/nav/link-pending.tsx),
+ * the logo mark turns a quarter every 600ms: four jump-start steps over 2400ms, so the first
+ * quarter lands at 150ms and any navigation faster than that never shows it at all. It stops
+ * (and the mark returns upright) the moment the navigation commits.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .nav-island:has([data-link-pending]) .logo-mark {
+    animation: logo-turn 2400ms steps(4, jump-start) 150ms infinite;
+  }
+}
+
+@keyframes logo-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+
+/* Reduced motion: nothing turns. The mark just dims once the navigation proves slow. The
+   blanket reduced-motion reset in globals.css sits in @layer base and its !important wins
+   over unlayered rules, so this one lives in the same layer (and out-ranks it by specificity). */
+@layer base {
+  @media (prefers-reduced-motion: reduce) {
+    .nav-island:has([data-link-pending]) .logo-mark {
+      animation-name: logo-dim;
+      animation-duration: 1ms !important;
+      animation-delay: 150ms !important;
+      animation-iteration-count: 1 !important;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
+    }
+  }
+}
+
+@keyframes logo-dim {
+  to {
+    opacity: 0.45;
+  }
+}
