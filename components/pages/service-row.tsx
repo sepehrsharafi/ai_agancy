@@ -76,11 +76,7 @@ export function ServiceRow({ service, labels, position, indexLabel }: Props) {
       <header className="flex items-start gap-4">
         {/* 48px shape with the icon centred on top; only the shape morphs. */}
         <div className="relative grid size-12 shrink-0 place-items-center">
-          <Shape
-            shape={glyph.shape}
-            color={tone.shape}
-            className={cn("absolute inset-0 size-full", glyph.morph)}
-          />
+          <Shape shape={glyph.shape} color={tone.shape} className={cn("absolute inset-0 size-full", glyph.morph)} />
           <Icon aria-hidden="true" className={cn("relative size-5", tone.icon)} />
         </div>
         <div className="min-w-0 flex-1">
@@ -93,9 +89,6 @@ export function ServiceRow({ service, labels, position, indexLabel }: Props) {
             {timeline}
           </p>
         </div>
-        <span aria-hidden="true" className="label text-ink-soft tabular-nums">
-          {indexLabel}
-        </span>
       </header>
 
       <div className="mt-6 grid gap-6 lg:mt-8 lg:grid-cols-12 lg:gap-x-gridgap">
@@ -111,7 +104,7 @@ export function ServiceRow({ service, labels, position, indexLabel }: Props) {
                     key={example}
                     className="inline-flex h-7 max-w-full items-center rounded-pill bg-paper px-3 text-[0.8125rem] leading-none font-medium whitespace-nowrap text-ink"
                   >
-                    <span className="truncate">{example}</span>
+                    <span className="">{example}</span>
                   </li>
                 ))}
               </ul>

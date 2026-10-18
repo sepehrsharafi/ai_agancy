@@ -232,7 +232,7 @@ export function NavIsland({ locale, t, langSwitch }: NavIslandProps) {
 
           <nav id="nav-panel" inert={!open} className="nav-panel md:hidden">
             <div className="min-h-0 overflow-hidden">
-              <div className="px-6 pt-3 pb-6">
+              <div className="px-6 pt-3 pb-3">
                 {/* Rows bleed 0.75rem past the content edge so the labels line up with the logo
                     and the CTA while the current page's pill still has room around its text. */}
                 <ul className="-mx-3">
@@ -258,10 +258,7 @@ export function NavIsland({ locale, t, langSwitch }: NavIslandProps) {
                 {/* Below a hairline, two more rows with the list rows' geometry (same bleed, same
                     px-3), so the CTA's and the language's text start exactly where the labels do
                     and the CTA pill's edges sit flush with the current page's pill. */}
-                <div
-                  className="panel-item mt-3 border-t border-line pt-4"
-                  style={{ "--i": 4 } as CSSProperties}
-                >
+                <div className="panel-item mt-3 border-t border-line pt-4" style={{ "--i": 4 } as CSSProperties}>
                   <Link
                     href={contactHref}
                     onClick={close}
